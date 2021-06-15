@@ -7,26 +7,72 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(httr)
+library(jsonlite)
 ```
 
-## R Markdown
+```{r}
+recordsBaseUrl <- "https://records.nhl.com/site/api"
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+nhltest <- GET("https://records.nhl.com/site/api/draft?cayenneExp=draftYear=2017%20and%20draftedByTeamId=15%20and%20roundNumber!=4") %>% content("text") %>% fromJSON(flatten = TRUE)
+nhltest$data$roundNumber
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+fullUrl <- paste0(recordsBaseUrl, "/draft?cayenneExp=draftedByTeamId=", team)
+nhltest2 <- GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE)
 
-```{r cars}
-summary(cars)
+FranchiseInfoTest <- GET("https://records.nhl.com/site/api/franchise?cayenneEsp=teamAbbrev=MTL") %>% content("text") %>% fromJSON(flatten = TRUE)
+FranchiseInfoTest$data %>% arrange(fullName)
+
+franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>% 
+  content("text") %>% 
+  fromJSON(flatten = TRUE)
+
+teamNameIdMatch <- franchiseInfo$data %>% select(mostRecentTeamId, fullName, teamAbbrev)
+
+team <- "New York"
+typeof(team)
+is.numeric(12)
+
+getTeamId <- function(team){
+  Id <- teamNameIdMatch %>% filter(str_detect(fullName, team)) %>%
+    select(mostRecentTeamId)
+  if (nrow(Id) == 1){
+    return(as.numeric(Id))
+  } else {
+    stop("try again entering team name or ID")
+  }
+}
+
+getFranchiseInfo <- function(team){
+  if(!is.numeric(team)) getTeamId(team)
+  fullUrl <- paste0(recordsBaseUrl, "/franchise?cayenneEsp=mostRecentTeamId=", team)
+  GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE)
+}
+
+team <- 12
+getSeasonRecords <- function(team){
+  if(!is.numeric(team)) getTeamId(team)
+  fullUrl <- paste0(recordsBaseUrl, "/franchise-season-records?cayenneEsp=FranchiseId=", team)
+  test <- GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
+}
+
+get
+test$data$franchiseId
+
+getSeasonRecords(12)
+GoalieRecords <- GET("https://records.nhl.com/site/api/franchise-goalie-records?cayenneEsp=id=235") %>% content("text") %>% fromJSON(flatten = TRUE)
+GoalieRecords$data
+
+test <- GET("https://records.nhl.com/site/api/franchise?include=teams.id&include=teams.active&include=teams.triCode&include=teams.placeName&include=teams.commonName&include=teams.fullName&include=teams.logos&include=teams.conference.name&include=teams.division.name&include=teams.franchiseTeam.firstSeason.id&include=teams.franchiseTeam.lastSeason.id&include=teams.franchiseTeam.teamCommonName") %>% content("text") %>% fromJSON(flatten = TRUE)
+test
+
+testStats <- GET("https://statsapi.web.nhl.com/api/v1/teams/12?expand=team.stats") %>% content("text") %>% fromJSON(flatten = TRUE)
+names(testStats)
+testStats
+
+testStats2 <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
+names(testStats2)
+testStats2
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
 
