@@ -12,6 +12,26 @@ library(httr)
 library(jsonlite)
 ```
 
+Function to get Team ID when name is input
+```{r}
+franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>% 
+  content("text") %>% 
+  fromJSON(flatten = TRUE)
+
+teamNameIdMatch <- franchiseInfo$data %>% select(mostRecentTeamId, fullName, teamAbbrev)
+
+getTeamId <- function(team){
+  Id <- teamNameIdMatch %>% filter(str_detect(fullName, team)) %>%
+    select(mostRecentTeamId)
+  if (nrow(Id) == 1){
+    return(as.numeric(Id))
+  } else {
+    stop("try again entering team name or ID")
+  }
+}
+```
+
+## Records API functions
 ```{r}
 recordsBaseUrl <- "https://records.nhl.com/site/api"
 
@@ -24,26 +44,13 @@ nhltest2 <- GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE)
 FranchiseInfoTest <- GET("https://records.nhl.com/site/api/franchise?cayenneEsp=teamAbbrev=MTL") %>% content("text") %>% fromJSON(flatten = TRUE)
 FranchiseInfoTest$data %>% arrange(fullName)
 
-franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>% 
-  content("text") %>% 
-  fromJSON(flatten = TRUE)
 
-teamNameIdMatch <- franchiseInfo$data %>% select(mostRecentTeamId, fullName, teamAbbrev)
+```
 
-team <- "New York"
-typeof(team)
-is.numeric(12)
 
-getTeamId <- function(team){
-  Id <- teamNameIdMatch %>% filter(str_detect(fullName, team)) %>%
-    select(mostRecentTeamId)
-  if (nrow(Id) == 1){
-    return(as.numeric(Id))
-  } else {
-    stop("try again entering team name or ID")
-  }
-}
 
+
+```{r}
 getFranchiseInfo <- function(team){
   if(!is.numeric(team)) getTeamId(team)
   fullUrl <- paste0(recordsBaseUrl, "/franchise?cayenneEsp=mostRecentTeamId=", team)
@@ -53,10 +60,10 @@ getFranchiseInfo <- function(team){
 team <- 12
 getSeasonRecords <- function(team){
   if(!is.numeric(team)) getTeamId(team)
-  fullUrl <- paste0(recordsBaseUrl, "/franchise-season-records?cayenneEsp=FranchiseId=", team)
-  test <- GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
+  fullURL <- paste0(recordsBaseUrl, "/franchise-season-records?cayenneEsp=FranchiseId=", team)
+  test <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
 }
-
+test
 get
 test$data$franchiseId
 
@@ -64,15 +71,54 @@ getSeasonRecords(12)
 GoalieRecords <- GET("https://records.nhl.com/site/api/franchise-goalie-records?cayenneEsp=id=235") %>% content("text") %>% fromJSON(flatten = TRUE)
 GoalieRecords$data
 
-test <- GET("https://records.nhl.com/site/api/franchise?include=teams.id&include=teams.active&include=teams.triCode&include=teams.placeName&include=teams.commonName&include=teams.fullName&include=teams.logos&include=teams.conference.name&include=teams.division.name&include=teams.franchiseTeam.firstSeason.id&include=teams.franchiseTeam.lastSeason.id&include=teams.franchiseTeam.teamCommonName") %>% content("text") %>% fromJSON(flatten = TRUE)
-test
-
-testStats <- GET("https://statsapi.web.nhl.com/api/v1/teams/12?expand=team.stats") %>% content("text") %>% fromJSON(flatten = TRUE)
-names(testStats)
-testStats
-
-testStats2 <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
-names(testStats2)
-testStats2
 ```
 
+
+##Stats API function
+```{r Stats API}
+testStats2 <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>%
+  content("text") %>%
+  fromJSON(flatten = TRUE) %>%
+  as.data.frame()
+
+getStats <- function(team = NULL){
+  if(is.null(team)){
+    teamStats <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>%
+    content("text") %>%
+    fromJSON(flatten = TRUE) %>%
+    as.data.frame()
+    allTeams <- data.frame()
+    for (i in seq_along(teamStats$teams.id)){
+      allTeams <- bind_rows(df, teamStats[[9]][[i]][[1]][[1]])
+    }
+    allTeams <- allTeams %>% relocate(starts_with("team"))
+    return(allTeams)
+  } else{
+    if(!is.numeric(team)) {team <- getTeamId(team)}
+    fullURL <- paste0("https://statsapi.web.nhl.com/api/v1/teams", "/", team, "?expand=team.stats")
+    teamStats <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE) %>%
+      as.data.frame()
+    oneTeam <- teamStats[[9]][[1]][[1]][[1]] %>%
+      relocate(starts_with("team"))
+    return(oneTeam)
+  }
+}
+
+getStats()
+str(getStats(team = "Hurricanes"))
+str(getStats())
+getStats(team = "Ducks")
+getStats()
+
+getTeamId("Canadiens")
+
+
+
+#for stats without rankings
+str(testStats2[[9]][[11]][[1]][[1]][1,]) %>%
+  relocate(starts_with("team"))
+```
+
+## Wrapper function
