@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(httr)
 library(jsonlite)
+library(knitr)
 ```
 
 Function to get Team ID when name is input
@@ -18,11 +19,11 @@ franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>%
   content("text") %>% 
   fromJSON(flatten = TRUE)
 
-teamNameIdMatch <- franchiseInfo$data %>% select(mostRecentTeamId, fullName, teamAbbrev)
+teamNameIdMatch <- franchiseInfo$data %>% select(id, fullName, teamAbbrev)
 
 getTeamId <- function(team){
   Id <- teamNameIdMatch %>% filter(str_detect(fullName, team)) %>%
-    select(mostRecentTeamId)
+    select(id)
   if (nrow(Id) == 1){
     return(as.numeric(Id))
   } else {
@@ -33,43 +34,108 @@ getTeamId <- function(team){
 
 ## Records API functions
 ```{r}
-recordsBaseUrl <- "https://records.nhl.com/site/api"
+recordsBaseURL <- "https://records.nhl.com/site/api"
 
-nhltest <- GET("https://records.nhl.com/site/api/draft?cayenneExp=draftYear=2017%20and%20draftedByTeamId=15%20and%20roundNumber!=4") %>% content("text") %>% fromJSON(flatten = TRUE)
-nhltest$data$roundNumber
-
-fullUrl <- paste0(recordsBaseUrl, "/draft?cayenneExp=draftedByTeamId=", team)
-nhltest2 <- GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE)
-
-FranchiseInfoTest <- GET("https://records.nhl.com/site/api/franchise?cayenneEsp=teamAbbrev=MTL") %>% content("text") %>% fromJSON(flatten = TRUE)
-FranchiseInfoTest$data %>% arrange(fullName)
-
-
-```
-
-
-
-
-```{r}
-getFranchiseInfo <- function(team){
-  if(!is.numeric(team)) getTeamId(team)
-  fullUrl <- paste0(recordsBaseUrl, "/franchise?cayenneEsp=mostRecentTeamId=", team)
-  GET(fullUrl) %>% content("text") %>% fromJSON(flatten = TRUE)
+getFranchiseInfo <- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise")
+    franchiseInfo <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+    if(!is.numeric(team)){team <- getTeamId(team)}
+    fullURL <- paste0(recordsBaseURL, "/franchise?cayenneExp=id=", team)
+    franchiseInfo <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  }
+  return(franchiseInfo$data)
 }
 
-team <- 12
-getSeasonRecords <- function(team){
-  if(!is.numeric(team)) getTeamId(team)
-  fullURL <- paste0(recordsBaseUrl, "/franchise-season-records?cayenneEsp=FranchiseId=", team)
-  test <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE) %>% as.data.frame()
+getTeamTotals <- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise-team-totals")
+    teamTotals <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+    if(!is.numeric(team)){team <- getTeamId(team)}
+    fullURL <- paste0(recordsBaseURL, "/franchise-team-totals?cayenneExp=franchiseId=", team)
+    teamTotals <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  }
+  return(teamTotals$data)
 }
-test
-get
-test$data$franchiseId
 
-getSeasonRecords(12)
-GoalieRecords <- GET("https://records.nhl.com/site/api/franchise-goalie-records?cayenneEsp=id=235") %>% content("text") %>% fromJSON(flatten = TRUE)
-GoalieRecords$data
+getSeasonRecords <- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise-season-records")
+    seasonRecords <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+  if(!is.numeric(team)){team <- getTeamId(team)}
+  fullURL <- paste0(recordsBaseURL, "/franchise-season-records?cayenneExp=franchiseId=", team)
+  seasonRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
+  }
+  return(seasonRecords$data)
+}
+
+getGoalieRecords <- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise-goalie-records")
+    goalieRecords <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+  if(!is.numeric(team)){team <- getTeamId(team)}
+  fullURL <- paste0(recordsBaseURL, "/franchise-goalie-records?cayenneExp=franchiseId=", team)
+  goalieRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
+  }
+  return(goalieRecords$data)
+}
+
+getSkaterRecords<- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise-skater-records")
+    skaterRecords <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+  if(!is.numeric(team)){team <- getTeamId(team)}
+  fullURL <- paste0(recordsBaseURL, "/franchise-skater-records?cayenneExp=franchiseId=", team)
+  skaterRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
+  }
+  return(skaterRecords$data)
+}
+
+getFranchiseDetail <- function(team = NULL){
+  if(is.null(team)){
+    fullURL <- paste0(recordsBaseURL, "/franchise-detail")
+    franchiseDetail <- GET(fullURL) %>%
+      content("text") %>%
+      fromJSON(flatten = TRUE)
+  } else{
+  if(!is.numeric(team)){team <- getTeamId(team)}
+  fullURL <- paste0(recordsBaseURL, "/franchise-detail?cayenneExp=id=", team)
+  franchiseDetail <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
+  }
+  return(franchiseDetail$data)
+}
+
+getFranchiseInfo()
+getFranchiseInfo("Hurricanes")
+getTeamTotals()
+getTeamTotals("Hurricanes")
+getSeasonRecords()
+getSeasonRecords("Carolina")
+getGoalieRecords()
+getGoalieRecords("Hurricanes")
+getSkaterRecords()
+getSkaterRecords(26)
+getFranchiseDetail()
+getFranchiseDetail("Hurricanes")
 
 ```
 
@@ -81,6 +147,8 @@ testStats2 <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats")
   fromJSON(flatten = TRUE) %>%
   as.data.frame()
 
+testStats2
+
 getStats <- function(team = NULL){
   if(is.null(team)){
     teamStats <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>%
@@ -89,7 +157,7 @@ getStats <- function(team = NULL){
     as.data.frame()
     allTeams <- data.frame()
     for (i in seq_along(teamStats$teams.id)){
-      allTeams <- bind_rows(df, teamStats[[9]][[i]][[1]][[1]])
+      allTeams <- bind_rows(allTeams, teamStats[[9]][[i]][[1]][[1]])
     }
     allTeams <- allTeams %>% relocate(starts_with("team"))
     return(allTeams)
@@ -106,19 +174,27 @@ getStats <- function(team = NULL){
   }
 }
 
-getStats()
-str(getStats(team = "Hurricanes"))
-str(getStats())
-getStats(team = "Ducks")
-getStats()
-
-getTeamId("Canadiens")
-
-
+stats <- getStats()
+getStats(team = 26)
 
 #for stats without rankings
-str(testStats2[[9]][[11]][[1]][[1]][1,]) %>%
-  relocate(starts_with("team"))
+#str(testStats2[[9]][[11]][[1]][[1]][1,]) %>%
+#  relocate(starts_with("team"))
 ```
 
 ## Wrapper function
+```{r}
+getChoice <- function(what, team = NULL){
+  switch(what,
+         franchise = getFranchiseInfo(team),
+         season = getSeasonRecords(team),
+         stats = getStats(team),
+         stop("try again entering what you want")
+         )
+}
+
+getChoice("franchise")
+getChoice("season")
+getChoice("stats")
+```
+
