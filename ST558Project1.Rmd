@@ -2,7 +2,9 @@
 title: "ST558 Project 1"
 author: "David Arthur"
 date: "6/14/2021"
-output: github_document
+output:
+  github_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +15,7 @@ library(jsonlite)
 library(knitr)
 ```
 
-Function to get Team ID when name is input
+# Function to get Team ID when name is input
 ```{r}
 franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>% 
   content("text") %>% 

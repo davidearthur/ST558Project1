@@ -27,7 +27,14 @@ body {
 
 <h1 id="st558-project-1">ST558 Project 1</h1>
 <p>David Arthur 6/14/2021</p>
-<p>Function to get Team ID when name is input</p>
+<ul>
+<li><a href="#function-to-get-team-id-when-name-is-input">Function to get Team ID when name is input</a>
+<ul>
+<li><a href="#records-api-functions">Records API functions</a></li>
+<li><a href="#wrapper-function">Wrapper function</a></li>
+</ul></li>
+</ul>
+<h1 id="function-to-get-team-id-when-name-is-input">Function to get Team ID when name is input</h1>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>franchiseInfo <span class="ot">&lt;-</span> <span class="fu">GET</span>(<span class="st">&quot;https://records.nhl.com/site/api/franchise&quot;</span>) <span class="sc">%&gt;%</span> </span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">content</span>(<span class="st">&quot;text&quot;</span>) <span class="sc">%&gt;%</span> </span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fromJSON</span>(<span class="at">flatten =</span> <span class="cn">TRUE</span>)</span></code></pre></div>

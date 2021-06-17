@@ -3,7 +3,12 @@ ST558 Project 1
 David Arthur
 6/14/2021
 
-Function to get Team ID when name is input
+-   [Function to get Team ID when name is
+    input](#function-to-get-team-id-when-name-is-input)
+    -   [Records API functions](#records-api-functions)
+    -   [Wrapper function](#wrapper-function)
+
+# Function to get Team ID when name is input
 
 ``` r
 franchiseInfo <- GET("https://records.nhl.com/site/api/franchise") %>% 
