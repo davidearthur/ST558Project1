@@ -5,6 +5,7 @@ date: "6/14/2021"
 output:
   github_document:
     toc: true
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +14,7 @@ library(tidyverse)
 library(httr)
 library(jsonlite)
 library(knitr)
+library(DT)
 ```
 
 # Function to get Team ID when name is input
@@ -128,18 +130,19 @@ getFranchiseDetail <- function(team = NULL){
 
 franchiseInfo <- getFranchiseInfo()
 franchiseInfo %>% filter(is.na(lastSeasonId))
-getFranchiseInfo("Hurricanes")
-teamTotals <- getTeamTotals()
+kable(getFranchiseInfo("Hurricanes"))
+kable(getTeamTotals())
+datatable(getTeamTotals())
 activeTeams <- teamTotals %>% filter(activeFranchise == 1) %>% select(teamName) %>% distinct()
-getTeamTotals("Hurricanes")
+datatable(getTeamTotals("Hurricanes"))
 getSeasonRecords()
 getSeasonRecords("Carolina")
 getGoalieRecords()
 getGoalieRecords("Hurricanes")
 getSkaterRecords()
 getSkaterRecords(26)
-getFranchiseDetail()
-getFranchiseDetail("Hurricanes")
+datatable(getFranchiseDetail())
+getFranchiseDetail("Canadiens")$generalManagerHistory
 
 ```
 
@@ -215,8 +218,13 @@ getChoice("totals")
 getChoice("season", "Caro")
 getChoice("goalie", "Rangers")
 getChoice("skater", "Philadelphia Q")
-getChoice("detail", "Maple")
+getChoice("detail")
 getChoice("stats", "Detroit")
 
+```
+
+## EDA
+```{r}
+getChoice("detail")
 ```
 
