@@ -133,14 +133,15 @@ franchiseInfo %>% filter(is.na(lastSeasonId))
 kable(getFranchiseInfo("Hurricanes"))
 kable(getTeamTotals())
 datatable(getTeamTotals())
-activeTeams <- teamTotals %>% filter(activeFranchise == 1) %>% select(teamName) %>% distinct()
-datatable(getTeamTotals("Hurricanes"))
-getSeasonRecords()
-getSeasonRecords("Carolina")
-getGoalieRecords()
-getGoalieRecords("Hurricanes")
-getSkaterRecords()
-getSkaterRecords(26)
+# activeTeams <- teamTotals %>% filter(activeFranchise == 1) %>% select(teamName) %>% distinct()
+# datatable(getTeamTotals("Hurricanes"))
+# getSeasonRecords()
+# getSeasonRecords("Carolina")
+# getGoalieRecords()
+# getGoalieRecords("Hurricanes")
+# getSkaterRecords()
+# getSkaterRecords(26)
+kable(getFranchiseDetail())
 datatable(getFranchiseDetail())
 getFranchiseDetail("Canadiens")$generalManagerHistory
 
@@ -191,7 +192,7 @@ activeStats <- stats %>% select(team.name) %>% rename(teamName = team.name) %>% 
 setdiff(activeTeams, activeStats)
 teamTotals %>% filter(teamName %in% as_vector(setdiff(activeTeams, activeStats))) %>% select(teamName) %>% n_distinct()
 
-getStats("Devils")
+kable(getStats())
 
 #for stats without rankings
 #str(testStats2[[9]][[11]][[1]][[1]][1,]) %>%
@@ -213,18 +214,18 @@ getChoice <- function(what, team = NULL){
          )
 }
 
-getChoice("franchise", 26)
-getChoice("totals")
-getChoice("season", "Caro")
-getChoice("goalie", "Rangers")
-getChoice("skater", "Philadelphia Q")
-getChoice("detail")
-getChoice("stats", "Detroit")
+# getChoice("franchise", 26)
+# getChoice("totals")
+# getChoice("season", "Caro")
+# getChoice("goalie", "Rangers")
+# getChoice("skater", "Philadelphia Q")
+# getChoice("detail")
+# getChoice("stats", "Detroit")
 
 ```
 
 ## EDA
 ```{r}
-getChoice("detail")
+# getChoice("detail")
 ```
 
