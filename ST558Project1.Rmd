@@ -10,11 +10,15 @@ always_allow_html: true
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(hablar)
 library(tidyverse)
 library(httr)
 library(jsonlite)
 library(knitr)
 library(DT)
+library(XML)
+library(xml2)
+library(lubridate)
 ```
 
 # Function to get Team ID when name is input
@@ -40,6 +44,18 @@ getTeamId <- function(team){
 ```{r}
 recordsBaseURL <- "https://records.nhl.com/site/api"
 
+replaceStrHTML <- function(x){
+  for(i in 1:length(x)){
+    if(!is.na(x[i])){
+      x[i] <- x[i] %>%
+        read_xml(as_html = TRUE) %>%
+        xml_text() %>%
+        str_replace_all(c("\r\n\t" = ";  ", "\r\n" = ""))
+    }
+  }
+return(x)
+}
+
 getFranchiseInfo <- function(team = NULL){
   if(is.null(team)){
     fullURL <- paste0(recordsBaseURL, "/franchise")
@@ -53,7 +69,7 @@ getFranchiseInfo <- function(team = NULL){
       content("text") %>%
       fromJSON(flatten = TRUE)
   }
-  return(franchiseInfo$data)
+  return(as_tibble(franchiseInfo$data))
 }
 
 getTeamTotals <- function(team = NULL){
@@ -69,7 +85,9 @@ getTeamTotals <- function(team = NULL){
       content("text") %>%
       fromJSON(flatten = TRUE)
   }
-  return(teamTotals$data)
+  teamTotals <- teamTotals$data %>% relocate(teamId, teamName) %>%
+    convert(fct(activeFranchise))
+  return(as_tibble(teamTotals))
 }
 
 getSeasonRecords <- function(team = NULL){
@@ -83,7 +101,9 @@ getSeasonRecords <- function(team = NULL){
   fullURL <- paste0(recordsBaseURL, "/franchise-season-records?cayenneExp=franchiseId=", team)
   seasonRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
   }
-  return(seasonRecords$data)
+  seasonRecords <- seasonRecords$data %>%
+    relocate(starts_with("franchise"), .after = id)
+  return(as_tibble(seasonRecords))
 }
 
 getGoalieRecords <- function(team = NULL){
@@ -97,7 +117,9 @@ getGoalieRecords <- function(team = NULL){
   fullURL <- paste0(recordsBaseURL, "/franchise-goalie-records?cayenneExp=franchiseId=", team)
   goalieRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
   }
-  return(goalieRecords$data)
+  goalieRecords <- goalieRecords$data %>%
+    relocate(firstName, lastName)
+  return(as_tibble(goalieRecords))
 }
 
 getSkaterRecords<- function(team = NULL){
@@ -111,7 +133,9 @@ getSkaterRecords<- function(team = NULL){
   fullURL <- paste0(recordsBaseURL, "/franchise-skater-records?cayenneExp=franchiseId=", team)
   skaterRecords <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
   }
-  return(skaterRecords$data)
+  skaterRecords <- skaterRecords$data %>%
+    relocate(firstName, lastName)
+  return(as_tibble(skaterRecords))
 }
 
 getFranchiseDetail <- function(team = NULL){
@@ -125,31 +149,41 @@ getFranchiseDetail <- function(team = NULL){
   fullURL <- paste0(recordsBaseURL, "/franchise-detail?cayenneExp=id=", team)
   franchiseDetail <- GET(fullURL) %>% content("text") %>% fromJSON(flatten = TRUE)
   }
-  return(franchiseDetail$data)
+  columnsHTML <- c("captainHistory", "coachingHistory", "generalManagerHistory", "retiredNumbersSummary")
+  for(i in columnsHTML){
+    franchiseDetail$data[, i] <- replaceStrHTML(franchiseDetail$data[, i])
+  }
+  franchiseDetail <- franchiseDetail$data %>%
+    mutate(heroImageUrl = str_replace(heroImageUrl, " ", "%20")) %>%
+    relocate(teamFullName) %>%
+    mutate(dateAwarded = ymd(str_split(dateAwarded, "T", simplify = TRUE)[ ,1]))
+  return(as_tibble(franchiseDetail))
 }
 
-franchiseInfo <- getFranchiseInfo()
-franchiseInfo %>% filter(is.na(lastSeasonId))
-kable(getFranchiseInfo("Hurricanes"))
-kable(getTeamTotals())
-datatable(getTeamTotals())
-# activeTeams <- teamTotals %>% filter(activeFranchise == 1) %>% select(teamName) %>% distinct()
-# datatable(getTeamTotals("Hurricanes"))
-# getSeasonRecords()
+
+
+detail <- getFranchiseDetail()
+detail
+franchise <- getFranchiseInfo()
+totals <- getTeamTotals()
+records <- getSeasonRecords()
 # getSeasonRecords("Carolina")
-# getGoalieRecords()
+goalie <- getGoalieRecords()
 # getGoalieRecords("Hurricanes")
-# getSkaterRecords()
+skater <- getSkaterRecords()
 # getSkaterRecords(26)
-kable(getFranchiseDetail())
-datatable(getFranchiseDetail())
-getFranchiseDetail("Canadiens")$generalManagerHistory
+kable(detail)
+kable(franchise)
+kable(totals)
+kable(records)
+kable(goalie[sample(1:nrow(goalie), 10), ])
+kable(skater[sample(1:nrow(skater), 10), ])
+
 
 ```
 
 
 ##Stats API function
-fix name id match
 ```{r Stats API}
 getTeamIdStats <- function(team){
   Id <- teamNameIdMatch %>% filter(str_detect(fullName, team)) %>%
@@ -164,14 +198,27 @@ getTeamIdStats <- function(team){
 getStats <- function(team = NULL){
   if(is.null(team)){
     teamStats <- GET("https://statsapi.web.nhl.com/api/v1/teams?expand=team.stats") %>%
-    content("text") %>%
-    fromJSON(flatten = TRUE) %>%
-    as.data.frame()
-    allTeams <- data.frame()
+      content("text") %>%
+      fromJSON(flatten = TRUE) %>%
+      as.data.frame()
+    allTeamsStats <- allTeamsRanks <- data.frame()
     for (i in seq_along(teamStats$teams.id)){
-      allTeams <- bind_rows(allTeams, teamStats[[9]][[i]][[1]][[1]])
+      allTeamsStats <- bind_rows(allTeamsStats, teamStats[[9]][[i]][[1]][[1]][1, ])
+      allTeamsRanks <- bind_rows(allTeamsRanks, teamStats[[9]][[i]][[1]][[1]][2, ])
     }
-    allTeams <- allTeams %>% relocate(starts_with("team"))
+    allTeamsStats <- allTeamsStats %>% relocate(team.id, team.name) %>%
+      rename_with(~ str_replace_all(.x, c("stat." = "", "team." = ""))) %>%
+      select(-c(ends_with("Rank"), penaltyKillOpportunities)) %>%
+      convert(num(wins:savePctg))
+    allTeamsRanks <- allTeamsRanks %>% relocate(team.id, team.name) %>%
+      rename_with(~ str_replace_all(.x, c("stat." = "", "team." = ""))) %>%
+      select(-c(name, gamesPlayed, shootingPctg, savePctg, link)) %>%
+      rename_with(~ paste0(.x, "Rank"), .cols = (wins: penaltyKillOpportunities))
+    allTeams <- inner_join(allTeamsStats, allTeamsRanks, by = "id") %>%
+      select(sort(names(.))) %>%
+      relocate(id, name, wins, winsRank) %>%
+      relocate(powerPlayGoalsRank, .after = powerPlayGoals) %>%
+      relocate(link, .after = last_col())
     return(allTeams)
   } else{
     if(!is.numeric(team)) {team <- getTeamIdStats(team)}
@@ -180,20 +227,30 @@ getStats <- function(team = NULL){
       content("text") %>%
       fromJSON(flatten = TRUE) %>%
       as.data.frame()
-    oneTeam <- teamStats[[9]][[1]][[1]][[1]] %>%
-      relocate(starts_with("team"))
-    return(oneTeam)
+    oneTeamStats <- teamStats[[9]][[1]][[1]][[1]][1, ]
+    oneTeamRanks <- teamStats[[9]][[1]][[1]][[1]][2, ]
+    oneTeamStats <- oneTeamStats %>% relocate(team.id, team.name) %>%
+      rename_with(~ str_replace_all(.x, c("stat." = "", "team." = ""))) %>%
+      select(-c(ends_with("Rank"), penaltyKillOpportunities)) %>%
+      convert(num(wins:savePctg))
+    oneTeamRanks <- oneTeamRanks %>% relocate(team.id, team.name) %>%
+      rename_with(~ str_replace_all(.x, c("stat." = "", "team." = ""))) %>%
+      select(-c(name, gamesPlayed, shootingPctg, savePctg, link)) %>%
+      rename_with(~ paste0(.x, "Rank"), .cols = (wins: penaltyKillOpportunities))
+    oneTeam <- inner_join(oneTeamStats, oneTeamRanks, by = "id") %>%
+      select(sort(names(.))) %>%
+      relocate(id, name, wins, winsRank) %>%
+      relocate(powerPlayGoalsRank, .after = powerPlayGoals) %>%
+      relocate(link, .after = last_col())
+    return(as_tibble(oneTeam))
   }
 }
-
-
 stats <- getStats()
-activeStats <- stats %>% select(team.name) %>% rename(teamName = team.name) %>% distinct
-setdiff(activeTeams, activeStats)
-teamTotals %>% filter(teamName %in% as_vector(setdiff(activeTeams, activeStats))) %>% select(teamName) %>% n_distinct()
+kable(stats)
+stats
 
-kable(getStats())
-
+# statsTibble <- as_tibble(stats)
+# statsTibble %>% slice(seq(from = 1, to = nrow(statsTibble), by = 2)) %>% rename_with(~ str_replace_all(.x, c("stat." = "", "team." = "")))
 #for stats without rankings
 #str(testStats2[[9]][[11]][[1]][[1]][1,]) %>%
 #  relocate(starts_with("team"))
@@ -214,18 +271,103 @@ getChoice <- function(what, team = NULL){
          )
 }
 
-# getChoice("franchise", 26)
-# getChoice("totals")
-# getChoice("season", "Caro")
-# getChoice("goalie", "Rangers")
-# getChoice("skater", "Philadelphia Q")
-# getChoice("detail")
-# getChoice("stats", "Detroit")
-
+getChoice("franchise", 26)
+getChoice("totals")
+getChoice("season", "Caro")
+getChoice("goalie", "Rangers")
+getChoice("skater", "Philadelphia Q")
+getChoice("detail")
+getChoice("stats", "Detroit")
+kable(totals)
 ```
 
 ## EDA
+Create new variables: Win/Loss Percentage (regular season only, ties excluded) and ratio of Goals For to Goals Against.  Scatter plot
 ```{r}
-# getChoice("detail")
+totalsNew <- totals %>% filter(gameTypeId == 2) %>%
+  mutate(WLPctg = wins/(wins + losses)) %>%
+  mutate(WLPctgCat = cut(WLPctg, c(0, 0.5, 1.0))) %>%
+  mutate(goalsRatio = goalsFor / goalsAgainst) %>%
+  mutate(goalsRatioCat = cut(goalsRatio, c(0, 1.0, 20))) %>%
+  select(teamName, franchiseId, starts_with("WLPctg"), starts_with("goalsRatio"), activeFranchise)  
+tableGoalsWL <- table(totalsNew$goalsRatioCat, totalsNew$WLPctgCat)
+
+dimnames(tableGoalsWL)[[1]] <- c("Scored fewer total goals than gave up", "Scored more total goals than gave up")
+
+kable(tableGoalsWL, col.names = c("Fewer wins than losses", "More wins than losses"), caption = "Count of teams with winning record vs. count of teams with losing record (all-time) by goals for/against ratio", row.names = TRUE)
+
+gTotals <- ggplot(data = totalsNew)
+gTotals + geom_point(aes(x = goalsRatio, y = WLPctg, col = activeFranchise)) +
+  labs(title = "Scatterplot of goals ratio vs win percentage for each team (all-time)", x = "Ratio of goals scored to goals allowed (all seasons)", y = "Win percentage (ties excluded)") +
+  scale_color_discrete(name = "", labels = c("non-active Franchise", "active Franchise"))
 ```
+
+Create variables for count of retired jerseys and age of team, plus rate of jersey retirement = number retired / age of team
+
+```{r}
+detailReduced <- detail %>%
+  select(id, teamFullName, retiredNumbersSummary, firstSeasonId) %>%
+  mutate(numberRetiredJerseys = str_count(retiredNumbersSummary, "–")) %>%
+  mutate(numberRetiredJerseys = ifelse(str_detect(retiredNumbersSummary, "In Honor of"), numberRetiredJerseys - 1, numberRetiredJerseys)) %>%
+  mutate(numberRetiredJerseys = ifelse(is.na(numberRetiredJerseys), 0, numberRetiredJerseys)) %>%
+  convert(chr(firstSeasonId)) %>%
+  mutate(firstSeasonId = str_trunc(firstSeasonId, 4, ellipsis = "")) %>%
+  convert(num(firstSeasonId)) %>%
+  mutate(teamAge = 2021 - firstSeasonId) %>%
+  mutate(jerseyRetirementRate = numberRetiredJerseys / teamAge) %>%
+  mutate(jerseyRetirementRate = replace_na(jerseyRetirementRate, 0))
+
+statsReduced <- stats %>%
+  select(name, wins, losses, gamesPlayed, goalsPerGame, goalsAgainstPerGame) %>%
+  mutate(seasonWLPctg = wins / (wins + losses)) %>%
+  mutate(seasonWLPctgCat = cut(seasonWLPctg, c(0, 0.5, 1.0)))
+  
+
+totalsDetail <- left_join(totalsNew, detailReduced, by = c("teamName" = "teamFullName"))
+
+totalsDetailStats <- inner_join(totalsDetail, statsReduced, by = c("teamName" = "name")) %>%
+  mutate(ageCat = cut(teamAge, c(0, 25, 50, 75, 100, 125)))
+
+tableAgeWL <- table(totalsDetailStats$ageCat, totalsDetailStats$seasonWLPctgCat)
+dimnames(tableAgeWL)[[1]] <- c("0-25 years old", "26-50 years old", "51-75 years old", "76-100 years old", "101-125 years old")
+names(dimnames(tableAgeWL)) <- c("Team Age", "")
+kable(tableAgeWL, col.names = c("Fewer wins than losses", "More wins than losses"), caption = "Count of teams with winning record vs. count of teams with losing record for 2020-21 season by age of team", row.names = TRUE)
+
+gWins <- ggplot(data = totalsDetailStats)
+gWins + geom_bar(aes(x = ageCat, fill = seasonWLPctgCat), position = "dodge") +
+  labs(title = "Active NHL Teams by age of franchise", x = "Team Age (years)", fill = "W/L ratio 2020-21")
+```
+
+```{r}
+gWins + geom_boxplot(aes(x = seasonWLPctgCat, y = goalsPerGame)) +
+  geom_point(aes(x = seasonWLPctgCat, y = goalsPerGame, col = ageCat), position = "jitter") +
+  labs(title = "Boxplots of average goals scored per game", x = "2020-21 Win Percentage (ties excluded)", y = "Average goals scored per game", col = "Age of team") +
+  scale_x_discrete(labels = c("More losses than wins", "More wins than losses"))
+```
+
+```{r}
+gWins + geom_boxplot(aes(x = seasonWLPctgCat, y = goalsAgainstPerGame)) +
+  geom_point(aes(x = seasonWLPctgCat, y = goalsAgainstPerGame, col = ageCat), position = "jitter") +
+  labs(title = "Boxplots of average goals allowed per game", x = "2020-21 Win Percentage (ties excluded)", y = "Average goals allowed per game", col = "Age of team") +
+  scale_x_discrete(labels = c("More losses than wins", "More wins than losses"))
+```
+
+
+
+```{r}
+gWins + geom_histogram(aes(x = numberRetiredJerseys, fill = ageCat)) +
+  labs(title = "Histogram of jerseys retired by team", x  = "Number of jerseys retired", fill = "Age of team")
+```
+```{r}
+gWins + geom_point(aes(x = jerseyRetirementRate, y = WLPctg, col = ageCat)) +
+  labs(title = "Scatterplot of jersey retirement rate vs win percentage (all seasons)", x = "Numbers retired divided by age of team", y = "All-time win percentage (ties excluded)", col = "Age of team") +
+  scale_color_discrete(name = "Team age", labels = c("0-25 years", "26-50 years", "51-75 years", "76-100 years", "101-125 years"))
+```
+
+Numeric summaries
+```{r}
+
+```
+
+
 
