@@ -269,7 +269,8 @@ getNHL <- function(what, team = NULL){
 ```
 
 ## How to use `getNHL()`
-The `getNHL()` function demonstrated here retrieves data from several different endpoints of the [NHL records API](https://gitlab.com/dword4/nhlapi/-/blob/master/records-api.md) and the [NHL stats API](https://gitlab.com/dword4/nhlapi/-/blob/master/stats-api.md).  For each of the endpoints, you can retrieve information on all teams, or for a specific team.  The available endpoints are:  
+The `getNHL()` function demonstrated here retrieves data from several different endpoints of the [NHL records API](https://gitlab.com/dword4/nhlapi/-/blob/master/records-api.md) and the [NHL stats API](https://gitlab.com/dword4/nhlapi/-/blob/master/stats-api.md).  For each of the endpoints, you can retrieve information on all teams, or for a specific team.  The available endpoints are:
+
 * franchise (for historic info on past/present NHL teams)  
 * totals (for all-time total statistics for each team)  
 * season (for each team's season records)  

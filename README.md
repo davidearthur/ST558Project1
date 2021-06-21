@@ -40,15 +40,16 @@ API](https://gitlab.com/dword4/nhlapi/-/blob/master/records-api.md) and
 the [NHL stats
 API](https://gitlab.com/dword4/nhlapi/-/blob/master/stats-api.md). For
 each of the endpoints, you can retrieve information on all teams, or for
-a specific team. The available endpoints are:  
-\* franchise (for historic info on past/present NHL teams)  
-\* totals (for all-time total statistics for each team)  
-\* season (for each team’s season records)  
-\* goalie (for goalie stats)  
-\* skater (for skater stats)  
-\* detail (for details about each franchise, such as coach/captain
-history, retired jerseys, etc.)  
-\* stats (for statistics from specific season)
+a specific team. The available endpoints are:
+
+-   franchise (for historic info on past/present NHL teams)  
+-   totals (for all-time total statistics for each team)  
+-   season (for each team’s season records)  
+-   goalie (for goalie stats)  
+-   skater (for skater stats)  
+-   detail (for details about each franchise, such as coach/captain
+    history, retired jerseys, etc.)  
+-   stats (for statistics from specific season)
 
 As shown below, the syntax of the function is
 `getNHL(endpoint, team = NULL)`. If you don’t request a specific team,
